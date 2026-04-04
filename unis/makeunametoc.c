@@ -54,10 +54,13 @@
  * 		0 --> 	this is the last byte. 
  * The remaining 7 bits (least significant 7 bits of each byte) are
  * concatenated in little‑endian order (lowest‑order 7 bits come first)
+ *
+ * ----------------------------------------------------------------------
  * */
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 
 #define NUM_CODE_POINT 	0x110000
@@ -164,6 +167,28 @@ static void * xrealloc (void *p, size_t size)
 	if (ret == NULL)
 		fail ("failed to allocate %ld bytes", (long) size);
 	return ret;
+}
+
+static int entrycmp(const void *p1, const void *p2)
+{
+	const struct entry *e1 = (const struct entry *) p1;
+	const struct entry *e2 = (const struct entry *) p2;
+
+	int ret = strcmp(e1->name, e2->name);
+	if(ret != 0) return ret;
+	if(e1->codepoint < e2->codepoint) return -1;
+	if(e1->codepoint > e2->codepoint) return +1;
+	return 0;
+}
+
+static int nodecmp(const void *p1, const void *p2)
+{
+	const struct node *n1 = (const struct node *) p1;
+	const struct node *n2 = (const struct node *) p2;
+
+	if(n1->key_len > n2->key_len) return -1;
+	if(n1->key_len < n2->key_len) return +1;
+	return memcmp(n1->key, n2->key, n1->key_len);
 }
 
 int main(int argc, char *argv[])

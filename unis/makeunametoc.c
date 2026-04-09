@@ -652,56 +652,55 @@ static void build_radix_tree(void)
 		for(j = 0; j < i; ++j)
 		{
 			/* Can't rely on memmem unfortunately. */
-			if(nodes[j]->in_dict)
+			if(!nodes[j]->in_dict) continue;
+
+			for(k = 0; k <= nodes[j]->key_len - nodes[i]->key_len; ++k)
 			{
-				for(k = 0; k <= nodes[j]->key_len - nodes[i]->key_len;
-					   	++k)
+				if(nodes[j]->key[k] == nodes[i]->key[0]
+				&& 0 == memcmp(nodes[j]->key + k + 1, 
+				nodes[i]->key + 1, nodes[i]->key_len - 1))
 				{
-					if(nodes[j]->key[k] == nodes[i]->key[0]
-					&& 0 == memcmp(nodes[j]->key + k + 1, 
-					nodes[i]->key + 1, nodes[i]->key_len - 1))
+					nodes[i]->key_idx = nodes[j]->key_idx + k;
+					j = i;
+					break;
+				}
+			}
+
+			if(j == i) break;	// key i is substring of key j.
+	
+			for(; k < nodes[j]->key_len; ++k)
+			{
+				if(nodes[j]->key[k] == nodes[i]->key[0]
+				&& 0 == memcmp(nodes[j]->key + k + 1,
+				nodes[i]->key + 1, nodes[j]->key_len - k - 1))
+				{
+					size_t l;
+					for(l = j + 1; l < i; ++l)
+						if(nodes[l]->in_dict) break;
+
+					if(l < i && 0 == memcmp(nodes[l]->key,
+					nodes[i]->key + nodes[j]->key_len - k,
+					nodes[i]->key_len - (nodes[j]->key_len - k)))
 					{
 						nodes[i]->key_idx = nodes[j]->key_idx + k;
 						j = i;
-						break;
 					}
+					else j = l - 1;			// quick jump
+
+					break;
 				}
-
-				if(j == i) break;	// key i is substring of key j.
-	
-				for(; k < nodes[j]->key_len; ++k)
-				{
-					if(nodes[j]->key[k] == nodes[i]->key[0]
-					&& memcmp(nodes[j]->key + k + 1,
-					nodes[i]->key + 1, nodes[j]->key_len - k - 1))
-					{
-						size_t l;
-						for(l = j + 1; l < i; ++l)
-							if(nodes[l]->in_dict) break;
-
-						if(l < i && 0 == memcmp(nodes[l]->key,
-						nodes[i]->key + nodes[j]->key_len - k,
-						nodes[i]->key_len - (nodes[j]->key_len - k)))
-						{
-							nodes[i]->key_idx = nodes[j]->key_idx + k;
-							j = i;
-						}
-						else j = l - 1;			// quick jump
-
-						break;
-					}
-				}
-				/*	length decresed, so len i < len j or len l;
-				 *	therefore, i is substring of allocated str-
-				 *	ing if and only if i is either substring of
-				 *	some string before it, or two nearby string
-				 *	A B, suffix of A + prefix + B = i, since, i
-				 *	shorter than any string before it.
-				 *
-				 *	algorithm above will correctly find whether
-				 *	any i is substring of strings before or not.
-				 * */
 			}
+
+			/*	length decresed, so len i < len j or len l;
+			 *	therefore, i is substring of allocated str-
+			 *	ing if and only if i is either substring of
+			 *	some string before it, or two nearby string
+			 *	A B, suffix of A + prefix + B = i, since, i
+			 *	shorter than any string before it.
+			 *
+			 *	algorithm above will correctly find whether
+			 *	any i is substring of strings before or not.
+			 * */
 		}
 
 		if(nodes[i]->key_idx == SIZE_MAX)
@@ -739,9 +738,6 @@ static void build_radix_tree(void)
 
 static void write_dict(void)
 {
-	printf("%d\n", dict_size + 1);
-
-		return ;
 	printf("static const char unametoc_dict[%d] = \n", dict_size + 1);
 	for(size_t i = 0; i < dict_size; i += 77)
 		printf("\"%.77s\"%s\n", dict + i,
@@ -805,7 +801,7 @@ int main(int argc, char *argv[])
 	write_dict();
 	write_tree();
 	write_generated();
-	printf("static const unsigned int unametoc_max_name_len = %d;\n\n",
+	printf("static const unsigned int unametoc_max_name_len = %d;\n",
 			max_entry_len);
 
 	return 0;
